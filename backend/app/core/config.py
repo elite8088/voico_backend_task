@@ -8,5 +8,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     app_name: str = "Voico Calls Dashboard"
 
+    stale_check_interval_minutes: int = 10
+    stale_threshold_minutes: int = 30
+
 
 settings = Settings()
