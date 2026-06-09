@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastapi import HTTPException, status
 
+from app.modules.calls.ai import enrich_transcript
 from app.modules.calls.repository import CallRepository
 from app.modules.calls.schema import (
     CallCounts,
@@ -12,6 +13,7 @@ from app.modules.calls.schema import (
     CallResponse,
     CallStatus,
     PaginatedCallsResponse,
+    WebhookCallPayload,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,5 +73,32 @@ class CallService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call not found")
         call.notes = notes
         call.updated_at = datetime.utcnow()
+        updated = await self.repository.update(call)
+        return CallResponse.model_validate(updated, from_attributes=True)
+
+    async def process_webhook(self, payload: WebhookCallPayload) -> CallResponse:
+        call = await self.repository.get_by_id(payload.call_id)
+        if call is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call not found")
+
+        call.status = payload.status
+        if payload.duration_seconds is not None:
+            call.duration_seconds = payload.duration_seconds
+        if payload.raw_transcript is not None:
+            call.raw_transcript = payload.raw_transcript
+        if payload.ended_at is not None:
+            call.ended_at = payload.ended_at
+        call.updated_at = datetime.utcnow()
+
+        if (
+            payload.status in (CallStatus.success, CallStatus.failed)
+            and payload.raw_transcript
+        ):
+            summary, label = await enrich_transcript(payload.raw_transcript)
+            if summary is not None:
+                call.summary = summary
+            if label is not None:
+                call.label = label
+
         updated = await self.repository.update(call)
         return CallResponse.model_validate(updated, from_attributes=True)
