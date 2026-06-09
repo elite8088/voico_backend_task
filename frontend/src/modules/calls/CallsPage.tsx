@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw, Phone } from "lucide-react";
 import { callsApi } from "@/services/api";
-import type { Call, CallStatus } from "@/types/calls";
+import type { Call, CallStatus, SortableColumn, SortDir } from "@/types/calls";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CallsTable } from "./CallsTable";
 import { CallDetailDrawer } from "./CallDetailDrawer";
+import { CallsFilterBar, type CallsFilters } from "./CallsFilterBar";
 
 type TabValue = "all" | CallStatus;
 
@@ -23,14 +24,20 @@ export function CallsPage() {
   const [activeTab, setActiveTab] = useState<TabValue>("all");
   const [page, setPage] = useState(1);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
+  const [filters, setFilters] = useState<CallsFilters>({});
+  const [sortBy, setSortBy] = useState<SortableColumn | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const statusFilter = activeTab === "all" ? undefined : activeTab;
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["calls", statusFilter, page, PAGE_SIZE],
+    queryKey: ["calls", statusFilter, filters, sortBy, sortDir, page, PAGE_SIZE],
     queryFn: () =>
       callsApi.list({
         status: statusFilter,
+        ...filters,
+        sort_by: sortBy,
+        sort_dir: sortBy ? sortDir : undefined,
         page,
         page_size: PAGE_SIZE,
       }),
@@ -39,6 +46,21 @@ export function CallsPage() {
 
   function handleTabChange(tab: TabValue) {
     setActiveTab(tab);
+    setPage(1);
+  }
+
+  function handleFiltersChange(next: CallsFilters) {
+    setFilters(next);
+    setPage(1);
+  }
+
+  function handleSort(column: SortableColumn) {
+    if (sortBy === column) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(column);
+      setSortDir("asc");
+    }
     setPage(1);
   }
 
@@ -101,7 +123,7 @@ export function CallsPage() {
         )}
 
         <Card className="bg-white">
-          <div className="flex items-center px-6 pt-5 pb-4 border-b border-border">
+          <div className="px-6 pt-5 pb-4 border-b border-border space-y-4">
             <div className="flex gap-1 bg-muted rounded-lg p-1 w-fit">
               {TABS.map((tab) => (
                 <button
@@ -118,6 +140,8 @@ export function CallsPage() {
                 </button>
               ))}
             </div>
+
+            <CallsFilterBar filters={filters} onChange={handleFiltersChange} />
           </div>
 
           <CardContent className="p-0">
@@ -142,6 +166,9 @@ export function CallsPage() {
               <CallsTable
                 calls={data?.data ?? []}
                 onRowClick={setSelectedCall}
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={handleSort}
               />
             )}
           </CardContent>

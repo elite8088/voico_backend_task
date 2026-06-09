@@ -8,6 +8,7 @@ from app.core.db import async_session
 from app.core.decorators import session_manager
 from app.modules.calls.repository import CallRepository
 from app.modules.calls.schema import (
+    CallLabel,
     CallResponse,
     CallStatus,
     PaginatedCallsResponse,
@@ -36,10 +37,31 @@ async def list_calls(
     session: SessionDep,
     service: Annotated[CallService, Depends(get_call_service)],
     status: Optional[CallStatus] = Query(default=None),
+    caller_name: Optional[str] = Query(default=None, description="Partial match on caller name"),
+    phone_number: Optional[str] = Query(default=None, description="Partial match on phone number"),
+    label: Optional[CallLabel] = Query(default=None, description="Exact match on label"),
+    min_duration: Optional[int] = Query(default=None, ge=0, description="Min duration in seconds"),
+    max_duration: Optional[int] = Query(default=None, ge=0, description="Max duration in seconds"),
+    sort_by: Optional[str] = Query(
+        default=None,
+        description="Column to sort by: phone_number, caller_name, status, label, duration_seconds, started_at, created_at",
+    ),
+    sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> PaginatedCallsResponse:
-    return await service.list_calls(status=status, page=page, page_size=page_size)
+    return await service.list_calls(
+        status=status,
+        page=page,
+        page_size=page_size,
+        caller_name=caller_name,
+        phone_number=phone_number,
+        label=label,
+        min_duration=min_duration,
+        max_duration=max_duration,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
 
 
 @router.get("/calls/{call_id}", response_model=CallResponse)

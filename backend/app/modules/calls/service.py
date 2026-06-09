@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 from app.modules.calls.repository import CallRepository
 from app.modules.calls.schema import (
     CallCounts,
+    CallLabel,
     CallResponse,
     CallStatus,
     PaginatedCallsResponse,
@@ -25,9 +26,25 @@ class CallService:
         status: Optional[CallStatus],
         page: int,
         page_size: int,
+        caller_name: Optional[str] = None,
+        phone_number: Optional[str] = None,
+        label: Optional[CallLabel] = None,
+        min_duration: Optional[int] = None,
+        max_duration: Optional[int] = None,
+        sort_by: Optional[str] = None,
+        sort_dir: str = "desc",
     ) -> PaginatedCallsResponse:
         calls, total, total_pages, counts = await self.repository.list_calls(
-            status, page, page_size
+            status,
+            page,
+            page_size,
+            caller_name=caller_name,
+            phone_number=phone_number,
+            label=label,
+            min_duration=min_duration,
+            max_duration=max_duration,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
         )
         return PaginatedCallsResponse(
             data=[CallResponse.model_validate(c, from_attributes=True) for c in calls],

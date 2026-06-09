@@ -1,5 +1,32 @@
 export type CallStatus = "in_progress" | "success" | "failed";
 
+export type CallLabel =
+  | "Sales inquiry"
+  | "Support"
+  | "Complaint"
+  | "Appointment"
+  | "Follow-up"
+  | "Other";
+
+export const CALL_LABELS: CallLabel[] = [
+  "Sales inquiry",
+  "Support",
+  "Complaint",
+  "Appointment",
+  "Follow-up",
+  "Other",
+];
+
+export type SortDir = "asc" | "desc";
+
+export type SortableColumn =
+  | "phone_number"
+  | "caller_name"
+  | "status"
+  | "label"
+  | "duration_seconds"
+  | "started_at";
+
 export interface Call {
   id: string;
   phone_number: string;
@@ -33,6 +60,13 @@ export interface PaginatedCallsResponse {
 
 export interface CallsQueryParams {
   status?: CallStatus;
+  caller_name?: string;
+  phone_number?: string;
+  label?: CallLabel;
+  min_duration?: number;
+  max_duration?: number;
+  sort_by?: SortableColumn;
+  sort_dir?: SortDir;
   page?: number;
   page_size?: number;
 }

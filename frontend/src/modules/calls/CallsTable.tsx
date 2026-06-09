@@ -1,7 +1,16 @@
 import { format } from "date-fns";
-import { Loader2, CheckCircle2, XCircle, Phone, ChevronRight } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Phone,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { Call, CallStatus } from "@/types/calls";
+import type { Call, CallStatus, SortableColumn, SortDir } from "@/types/calls";
 
 interface StatusBadgeProps {
   status: CallStatus;
@@ -42,9 +51,56 @@ function formatDuration(seconds: number | null): string {
 interface CallsTableProps {
   calls: Call[];
   onRowClick: (call: Call) => void;
+  sortBy?: SortableColumn;
+  sortDir: SortDir;
+  onSort: (column: SortableColumn) => void;
 }
 
-export function CallsTable({ calls, onRowClick }: CallsTableProps) {
+const COLUMNS: { key: SortableColumn; label: string }[] = [
+  { key: "phone_number", label: "Phone" },
+  { key: "caller_name", label: "Caller" },
+  { key: "status", label: "Status" },
+  { key: "label", label: "Label" },
+  { key: "duration_seconds", label: "Duration" },
+  { key: "started_at", label: "Started At" },
+];
+
+function SortableHeader({
+  column,
+  label,
+  sortBy,
+  sortDir,
+  onSort,
+}: {
+  column: SortableColumn;
+  label: string;
+  sortBy?: SortableColumn;
+  sortDir: SortDir;
+  onSort: (column: SortableColumn) => void;
+}) {
+  const active = sortBy === column;
+  return (
+    <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">
+      <button
+        onClick={() => onSort(column)}
+        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+      >
+        {label}
+        {active ? (
+          sortDir === "asc" ? (
+            <ChevronUp className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5" />
+          )
+        ) : (
+          <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />
+        )}
+      </button>
+    </th>
+  );
+}
+
+export function CallsTable({ calls, onRowClick, sortBy, sortDir, onSort }: CallsTableProps) {
   if (calls.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -65,12 +121,16 @@ export function CallsTable({ calls, onRowClick }: CallsTableProps) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border">
-            <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">Phone</th>
-            <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">Caller</th>
-            <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">Status</th>
-            <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">Label</th>
-            <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">Duration</th>
-            <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground">Started At</th>
+            {COLUMNS.map((col) => (
+              <SortableHeader
+                key={col.key}
+                column={col.key}
+                label={col.label}
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={onSort}
+              />
+            ))}
             <th className="py-3 px-4" />
           </tr>
         </thead>
