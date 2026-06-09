@@ -1,11 +1,26 @@
+import { useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { X, Phone, User, Clock, Calendar, FileText, Sparkles } from "lucide-react";
+import {
+  X,
+  Phone,
+  User,
+  Clock,
+  Calendar,
+  FileText,
+  Sparkles,
+  StickyNote,
+  Loader2,
+} from "lucide-react";
 import { StatusBadge } from "./CallsTable";
+import { callsApi } from "@/services/api";
+import { Button } from "@/components/ui/button";
 import type { Call } from "@/types/calls";
 
 interface CallDetailDrawerProps {
   call: Call | null;
   onClose: () => void;
+  onCallUpdated?: (call: Call) => void;
 }
 
 function DetailRow({
@@ -35,7 +50,85 @@ function formatDuration(seconds: number | null): string {
   return m > 0 ? `${m} min ${s} sec` : `${s} sec`;
 }
 
-export function CallDetailDrawer({ call, onClose }: CallDetailDrawerProps) {
+function NotesSection({
+  call,
+  onCallUpdated,
+}: {
+  call: Call;
+  onCallUpdated?: (call: Call) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(call.notes ?? "");
+
+  useEffect(() => {
+    setDraft(call.notes ?? "");
+    setIsEditing(false);
+  }, [call.id, call.notes]);
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (notes: string | null) => callsApi.updateNotes(call.id, notes),
+    onSuccess: (updated) => {
+      onCallUpdated?.(updated);
+      queryClient.invalidateQueries({ queryKey: ["calls"] });
+      setIsEditing(false);
+    },
+  });
+
+  function handleSave() {
+    const trimmed = draft.trim();
+    mutate(trimmed === "" ? null : trimmed);
+  }
+
+  function handleCancel() {
+    setDraft(call.notes ?? "");
+    setIsEditing(false);
+  }
+
+  return (
+    <div className="px-6 py-4 border-t border-border">
+      <div className="flex items-center gap-2 mb-2">
+        <StickyNote className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">Notes</h3>
+      </div>
+
+      {isEditing ? (
+        <div>
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Add a note about this call..."
+            rows={4}
+            className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
+          />
+          <div className="flex items-center gap-2 mt-2">
+            <Button size="sm" onClick={handleSave} disabled={isPending}>
+              {isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleCancel} disabled={isPending}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setIsEditing(true)}
+          className="w-full text-left rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2 text-sm hover:bg-muted transition-colors"
+        >
+          {call.notes ? (
+            <span className="text-foreground whitespace-pre-wrap break-words">{call.notes}</span>
+          ) : (
+            <span className="text-muted-foreground">Click to add a note...</span>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function CallDetailDrawer({ call, onClose, onCallUpdated }: CallDetailDrawerProps) {
   if (!call) return null;
 
   return (
@@ -114,6 +207,8 @@ export function CallDetailDrawer({ call, onClose }: CallDetailDrawerProps) {
         )}
 
         {/* Transcript */}
+        <NotesSection call={call} onCallUpdated={onCallUpdated} />
+
         {call.raw_transcript && (
           <div className="px-6 py-4 border-t border-border">
             <div className="flex items-center gap-2 mb-2">
